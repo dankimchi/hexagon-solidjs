@@ -4,3 +4,4 @@ package-lock.json
 yarn.lock
 .pnp.cjs
 .pnp.loader.mjs
+dist
