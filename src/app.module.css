@@ -1,0 +1,40 @@
+.red {
+  color: red;
+}
+
+.big {
+  font: bold calc(var(--s) * 0.8) Georgia, serif;
+  text-transform: capitalize;
+}
+
+.main {
+  display: block; /* we will talk about this later ... */
+  --s: 50px; /* size  */
+  --m: 4px; /* margin */
+}
+
+.main:focus-visible { outline:none}
+
+.row {
+  font-size: 0; /* disable white space between inline block element */
+  text-align: center;
+
+  .cell {
+    background: silver;
+    width: var(--s);
+    margin: var(--m);
+    height: calc(var(--s) * 1.1547);
+    display: inline-block;
+    cursor: pointer;
+    clip-path: polygon(0% 25%, 0% 75%, 50% 100%, 100% 75%, 100% 25%, 50% 0%);
+    margin-bottom: calc(
+      var(--m) - var(--s) * 0.2886
+    ); /* some negative margin to create overlap */
+  }
+}
+
+
+
+.row .cell.clicked {
+  background: darkcyan;
+}
