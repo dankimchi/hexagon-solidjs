@@ -61,8 +61,10 @@ function App() {
           .join("");
         setCombo(newCombo);
         if (newCombo.length > 2) {
-          if (calledCombos().includes(newCombo))
+          if (calledCombos().includes(newCombo)){
+            pointSetter(points() - 1);
             showResponseToUser(gamePhases.alreadyCalled, 1000);
+          }
           // check if combo of 3 letters has correct sum
           else if (hexagon().sums[newCombo] == sum()) {
             pointSetter(points() + 1);
