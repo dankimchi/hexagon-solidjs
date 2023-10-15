@@ -1,5 +1,5 @@
 ﻿
-import { Show, Switch, Match, createSignal, For, createEffect } from "solid-js";
+import { Show, Switch, Match, createSignal, For, createEffect, Setter } from "solid-js";
 import { render } from "solid-js/web";
 
 import { generateHexagon, randomize, Hexagon, Cell } from "./hexagon";
@@ -51,7 +51,7 @@ function App() {
     setTime(memoTime());
   }
 
-  function click(cell: Cell, [points, pointSetter]: [() => number, (p: number) => number]) {
+  function click(cell: Cell, pointSetter: Setter<number>) {
     if (cell && phase() == gamePhases.pickingCombinations) {
       if (combo().includes(cell.letter)) {
         setCombo(combo().replace(cell.letter, ""));
@@ -61,20 +61,20 @@ function App() {
           .join("");
         setCombo(newCombo);
         if (newCombo.length > 2) {
-          if (calledCombos().includes(newCombo)){
-            pointSetter(points() - 1);
+          if (calledCombos().includes(newCombo)) {
+            pointSetter(p => p - 1);
             showResponseToUser(gamePhases.alreadyCalled, 1000);
           }
           // check if combo of 3 letters has correct sum
           else if (hexagon().sums[newCombo] == sum()) {
-            pointSetter(points() + 1);
+            pointSetter(p => p + 1);
             setCalledCombos(calledCombos().concat(newCombo));
             if (calledCombos().length == hexagon().rarity[sum()] - 1)
               setPhase(gamePhases.allDone);
             else
               showResponseToUser(gamePhases.correct, 2000);
           } else {
-            pointSetter(points() - 1);
+            pointSetter(p => p - 1);
             showResponseToUser(gamePhases.wrong, 1000);
           }
         }
@@ -83,7 +83,7 @@ function App() {
   }
 
   function keyPress(e: KeyboardEvent) {
-    click(hexagon().cells?.[e.key], twoPlayersMode() ? [points2, setPoints2] : [points, setPoints]);
+    click(hexagon().cells?.[e.key], twoPlayersMode() ? setPoints2 : setPoints);
   }
 
   function giveUp() {
@@ -113,8 +113,7 @@ function App() {
   }, 1000);
 
   function resetPoints() {
-    setPoints(0);
-    setPoints2(0);
+    setPoints2(setPoints(0));
   }
 
   return (
@@ -141,31 +140,29 @@ function App() {
             Target: {phase() != gamePhases.memorization ? sum() : "???"}
           </div>
         </Show>
-        <Show when={hexagon()}>
-          <For each={hexagon().rows}>
-            {(row) => (
-              <div class={styles.row}>
-                <For each={row}>
-                  {(cell: Cell) => (
-                    <div
-                      classList={{
-                        [styles.cell]: true,
-                        [styles.big]: true,
-                        [styles.clicked]: combo().includes(cell.letter),
-                      }}
-                      onClick={() => click(cell, [points, setPoints])}
-                    >
-                      {[gamePhases.memorization, gamePhases.giveUp].includes(phase()) ||
-                        phase() == gamePhases.correct && combo().includes(cell.letter)
-                        ? cell.number
-                        : cell.letter}
-                    </div>
-                  )}
-                </For>
-              </div>
-            )}
-          </For>
-        </Show>
+        <For each={hexagon()?.rows}>
+          {(row) => (
+            <div class={styles.row}>
+              <For each={row}>
+                {(cell: Cell) => (
+                  <div
+                    classList={{
+                      [styles.cell]: true,
+                      [styles.big]: true,
+                      [styles.clicked]: combo().includes(cell.letter),
+                    }}
+                    onClick={() => click(cell, setPoints)}
+                  >
+                    {[gamePhases.memorization, gamePhases.giveUp].includes(phase()) ||
+                      phase() == gamePhases.correct && combo().includes(cell.letter)
+                      ? cell.number
+                      : cell.letter}
+                  </div>
+                )}
+              </For>
+            </div>
+          )}
+        </For>
         <div class={styles.messages}>
           <Switch>
             <Match when={phase() == gamePhases.wrong}>
