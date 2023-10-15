@@ -21,10 +21,13 @@ enum gamePhases {
 const min = 1;
 
 function App() {
-  const [max, setMax] = createSignal(5);
+  const [max, setMax] = createSignal(6);
   const [memoTime, setMemoTime] = createSignal(30);
   const [hexagon, setHexagon] = createSignal<Hexagon | null>(null);
   const [points, setPoints] = createSignal(0);
+  const [points2, setPoints2] = createSignal(0);
+  const [twoPlayersMode, setTwoPlayersMode] = createSignal(false);
+  const [twoPlayersSetting, setTwoPlayersSetting] = createSignal(false);
   const [time, setTime] = createSignal<number | null>(null);
   const [phase, setPhase] = createSignal<gamePhases>(gamePhases.titleScreen);
   const [sum, setSum] = createSignal<number | null>(null);
@@ -36,6 +39,8 @@ function App() {
     setPhase(gamePhases.memorization);
     setCombo("");
     setCalledCombos([]);
+    if (twoPlayersSetting() != twoPlayersMode()) resetPoints();
+    setTwoPlayersMode(twoPlayersSetting());
     const h = generateHexagon();
     randomize(h, min, max());
     setHexagon(h);
@@ -46,7 +51,7 @@ function App() {
     setTime(memoTime());
   }
 
-  function click(cell: Cell) {
+  function click(cell: Cell, [points, pointSetter]: [() => number, (p: number) => number]) {
     if (cell && phase() == gamePhases.pickingCombinations) {
       if (combo().includes(cell.letter)) {
         setCombo(combo().replace(cell.letter, ""));
@@ -60,14 +65,14 @@ function App() {
             showResponseToUser(gamePhases.alreadyCalled, 1000);
           // check if combo of 3 letters has correct sum
           else if (hexagon().sums[newCombo] == sum()) {
-            setPoints(points() + 1);
+            pointSetter(points() + 1);
             setCalledCombos(calledCombos().concat(newCombo));
             if (calledCombos().length == hexagon().rarity[sum()] - 1)
               setPhase(gamePhases.allDone);
             else
               showResponseToUser(gamePhases.correct, 2000);
           } else {
-            setPoints(points() - 1);
+            pointSetter(points() - 1);
             showResponseToUser(gamePhases.wrong, 1000);
           }
         }
@@ -76,7 +81,7 @@ function App() {
   }
 
   function keyPress(e: KeyboardEvent) {
-    click(hexagon().cells?.[e.key]);
+    click(hexagon().cells?.[e.key], twoPlayersMode() ? [points2, setPoints2] : [points, setPoints]);
   }
 
   function giveUp() {
@@ -102,27 +107,25 @@ function App() {
         let c = calledCombos().length - 1;
         setCombo(calledCombos()[setComboLoop(l => l >= c ? 0 : l + 1)]);
         break;
-      default:
-        break;
     }
   }, 1000);
+
+  function resetPoints() {
+    setPoints(0);
+    setPoints2(0);
+  }
 
   return (
     <>
       <div class={styles.main} onKeyPress={keyPress} tabIndex={0}>
-        <button onClick={startGame}>
-          {phase() == gamePhases.titleScreen
-            ? "Start the game"
-            : "Restart the game"}
-        </button>
-
-        when restarting, hexagon will be filled with numbers
-        from {min} to <input type='number' value={max()} onInput={e => setMax(parseInt(e.currentTarget.value))} />.
-        Time for memorization: <input type='number' value={memoTime()} onInput={e => setMemoTime(parseInt(e.currentTarget.value))} /> seconds.
         <Show when={phase() != gamePhases.titleScreen}>
           <div class={styles.big}>
-            Points: {points()}{" "}
-            <button onClick={() => setPoints(0)}>Reset points</button>
+            {twoPlayersMode() ? 'Mouse:' : 'Points:'}
+            {points()}&nbsp;
+            <Show when={twoPlayersMode()}>
+              Keyboard: {points2()}
+            </Show>&nbsp;
+            <button onClick={resetPoints}>Reset points</button>
           </div>
           <div
             class={styles.big}
@@ -148,7 +151,7 @@ function App() {
                         [styles.big]: true,
                         [styles.clicked]: combo().includes(cell.letter),
                       }}
-                      onClick={() => click(cell)}
+                      onClick={() => click(cell, [points, setPoints])}
                     >
                       {[gamePhases.memorization, gamePhases.giveUp].includes(phase()) ||
                         phase() == gamePhases.correct && combo().includes(cell.letter)
@@ -161,8 +164,25 @@ function App() {
             )}
           </For>
         </Show>
-        <br />
-        <br />
+        <div class={styles.messages}>
+          <Switch>
+            <Match when={phase() == gamePhases.wrong}>
+              <div class={styles.red}>Wrong</div>
+            </Match>
+            <Match when={phase() == gamePhases.alreadyCalled}>
+              <div class={styles.red}>Already called</div>
+            </Match>
+            <Match when={phase() == gamePhases.correct}>
+              <div>Correct! +1 points</div>
+            </Match>
+            <Match when={phase() == gamePhases.giveUp}>
+              <div>{calledCombos().length} combinations</div>
+            </Match>
+            <Match when={phase() == gamePhases.allDone}>
+              All done! <button onClick={startGame}>New round</button>?
+            </Match>
+          </Switch>
+        </div>
         <Switch>
           <Match when={phase() == gamePhases.titleScreen}>
             <p>Game "Hexagon" as played in Korean game show <a href="https://www.netflix.com/title/81653386">Devil's Plan</a>.</p>
@@ -176,23 +196,18 @@ function App() {
           </Match>
         </Switch>
 
-        <Switch>
-          <Match when={phase() == gamePhases.wrong}>
-            <div class={styles.red}>Wrong</div>
-          </Match>
-          <Match when={phase() == gamePhases.alreadyCalled}>
-            <div class={styles.red}>Already called</div>
-          </Match>
-          <Match when={phase() == gamePhases.correct}>
-            <div>Correct! +1 points</div>
-          </Match>
-          <Match when={phase() == gamePhases.giveUp}>
-            <div>{calledCombos().length} combinations</div>
-          </Match>
-          <Match when={phase() == gamePhases.allDone}>
-            All done! <button onClick={startGame}>New round</button>?
-          </Match>
-        </Switch>
+        <button onClick={startGame}>
+          {phase() == gamePhases.titleScreen
+            ? "Start the game"
+            : "Restart the game"}
+        </button>
+        <label>
+          <input type="checkbox" checked={twoPlayersSetting()} onInput={e => setTwoPlayersSetting(e.target.checked)} />Two players mode (keyboard vs mouse)
+        </label>
+
+        <p>when restarting, hexagon will be filled with numbers
+          from {min} to <input type='number' value={max()} onInput={e => setMax(parseInt(e.currentTarget.value))} />.</p>
+        <p>Time for memorization: <input type='number' value={memoTime()} onInput={e => setMemoTime(parseInt(e.currentTarget.value))} /> seconds.</p>
       </div>
     </>
   );
